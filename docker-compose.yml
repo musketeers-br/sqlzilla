@@ -1,15 +1,28 @@
 version: '3.6'
 services:
   iris:
+    container_name: sqlzilla-iris-1
     build:
       context: .
       dockerfile: Dockerfile
       target: final
     restart: always
-    command: --check-caps false --ISCAgent false
+    # command: --check-caps false --ISCAgent false
     ports:
-      - 1972
-      - 52773
-      - 53773
+      - 56753:1972
+      - 56754:52773
+      - 56755:53773
     volumes:
       - ./:/home/irisowner/dev
+    environment:
+      - OPENAI_API_KEY=$OPENAI_API_KEY
+
+  jupyter:
+    image: quay.io/jupyter/base-notebook
+    ports:
+      - 29999:8888
+    volumes:
+      - ./jupyter:/home/jovyan/work
+    environment:
+      - OPENAI_API_KEY=$OPENAI_API_KEY
+    command: ["start-notebook.py", "--NotebookApp.token='123'"]

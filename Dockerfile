@@ -8,10 +8,19 @@ FROM $IMAGE as builder
 
 WORKDIR /home/irisowner/dev
 
-## install git
-## USER root
-##RUN apt update && apt-get -y install git
-##USER ${ISC_PACKAGE_MGRUSER}
+# # Image specific packages
+# RUN export PATH=$PATH:/home/irisowner/.local/bin
+# RUN pip install --no-cache-dir --upgrade pip
+# RUN pip install --no-cache-dir pandas
+# RUN pip install --no-cache-dir jupyterlab==3.6.3
+
+# USER root
+
+# # make possible to save Jupyter notebooks
+# RUN mkdir -p /home/irisowner/dev/jupyter
+# RUN chmod -R 777 /home/irisowner/dev/jupyter
+
+# USER ${ISC_PACKAGE_MGRUSER}
 
 ARG TESTS=0
 ARG MODULE="dc-sample"

@@ -9,6 +9,8 @@
       "ns": "IRISAPP",
       "username": "_SYSTEM",
       "password": "SYS",
+      "host": "localhost",
+      "port": 56754,
       "docker-compose": {
         "service": "iris",
         "internalPort": 52773

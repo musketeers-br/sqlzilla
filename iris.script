@@ -19,6 +19,7 @@
 
     // Create /_vscode web app to support intersystems-community.testingmanager VS Code extension
     zpm "install vscode-per-namespace-settings"
+    zpm "install samples-aviation"
 
     // Configure %UnitTest in IRISAPP to suit the VS Code extension
     set ^UnitTestRoot="/usr/irissys/.vscode/IRISAPP/UnitTestRoot"
