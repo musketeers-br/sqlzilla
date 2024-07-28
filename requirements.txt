@@ -2,3 +2,7 @@ langchain
 langchain-openai
 langchain-iris
 pandas
+streamlit
+streamlit_ace
+streamlit_code_editor
+streamlit_chat
