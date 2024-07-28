@@ -1,0 +1,3 @@
+streamlit
+streamlit-code-editor
+requests

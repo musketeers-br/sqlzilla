@@ -26,3 +26,10 @@ services:
     environment:
       - OPENAI_API_KEY=$OPENAI_API_KEY
     command: ["start-notebook.py", "--NotebookApp.token='123'"]
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile-streamlit
+    ports:
+      - 8501:8501
