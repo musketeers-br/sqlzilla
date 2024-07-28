@@ -11,7 +11,7 @@ if 'host' not in st.session_state:
 if 'port' not in st.session_state:
     st.session_state.port = '56754'
 if 'namespaces' not in st.session_state:
-    st.session_state.namespaces = []
+    st.session_state.namespaces = ['%SYS','IRISAPP']
 if 'selected_namespace' not in st.session_state:
     st.session_state.selected_namespace = ''
 if 'query' not in st.session_state:
@@ -64,6 +64,13 @@ def assistant_interaction(prompt):
 # Streamlit UI
 st.title("SQLZilla")
 
+# Fetch namespaces initially
+#fetch_namespaces()
+
+# Initial prompts for namespace and database schema
+namespace = st.selectbox('Select Namespace', st.session_state.namespaces)
+database_schema = st.text_input('Enter Database Schema')
+
 # Authentication configuration
 if st.button("Change Authentication"):
     username = st.text_input("Username", value=st.session_state.auth[0])
@@ -77,6 +84,41 @@ if st.button("Change Authentication"):
         st.success("Configuration updated!")
 
 
-code_editor("-- your query", lang="sql", height=[10, 100], shortcuts="vscode")
+# if namespace and database_schema:
+    # Layout for the page
+col1, col2 = st.columns(2)
 
-st.text_area("Prompt", value="", height=200)
+with col1:
+    code_editor("-- your query", lang="sql", height=[10, 100], shortcuts="vscode")
+    
+    # Buttons to run, save, and clear the query in a single row
+    run_button, save_button, clear_button = st.columns([1, 1, 1])
+    with run_button:
+        if st.button('Execute'):
+            run_query()
+    with save_button:
+        if st.button('Save'):
+            save_query()
+    with clear_button:
+        if st.button('Clear'):
+            st.session_state.query = ""
+    # Display query result as dataframe
+    if st.session_state.query_result:
+        try:
+            df = pd.json_normalize(st.session_state.query_result['result'])
+            st.dataframe(df)
+        except KeyError:
+            st.error("Unexpected result format")
+
+with col2:
+    prompt = st.chat_input("Say something")
+    if prompt:
+        response = assistant_interaction(prompt)
+        st.write(response)
+
+    # Display chat history
+    for sender, message in st.session_state.chat_history:
+        if sender == "User":
+            st.text_area("User", value=message, height=75, key=f"user_{message}")
+        else:
+            st.text_area("Assistant", value=message, height=75, key=f"assistant_{message}")
