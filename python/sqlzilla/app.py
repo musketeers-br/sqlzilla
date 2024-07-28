@@ -17,7 +17,7 @@ if 'selected_namespace' not in st.session_state:
 if 'query' not in st.session_state:
     st.session_state.query = ''
 if 'chat_history' not in st.session_state:
-    st.session_state.chat_history = []
+    st.session_state.chat_history = [{"role": "assistant", "content": "I'm SQLZilla, your friendly AI SQL helper.\n Ask me anything, from basic queries to complex optimizations."}]
 
 # Function to fetch namespaces
 def fetch_namespaces():
@@ -70,17 +70,8 @@ st.markdown(f"""<h1 style='text-align: center; color: grey;'>
             <img src="data:image/gif;base64,{logo()}" width='200' height='200'>
             </h1>""", unsafe_allow_html=True)
 
-
-
-# Fetch namespaces initially
-#fetch_namespaces()
-
-# Initial prompts for namespace and database schema
-namespace = st.selectbox('Select Namespace', st.session_state.namespaces)
-database_schema = st.text_input('Enter Database Schema')
-
 # Authentication configuration
-if st.button("Change Authentication"):
+if st.button("Config"):
     username = st.text_input("Username", value=st.session_state.auth[0])
     password = st.text_input("Password", value=st.session_state.auth[1], type="password")
     host = st.text_input("Host", value=st.session_state.host)
@@ -90,6 +81,13 @@ if st.button("Change Authentication"):
         st.session_state.host = host
         st.session_state.port = port
         st.success("Configuration updated!")
+
+# Fetch namespaces initially
+#fetch_namespaces()
+
+# Initial prompts for namespace and database schema
+namespace = st.selectbox('Select Namespace', st.session_state.namespaces)
+database_schema = st.text_input('Enter Database Schema')
 
 
 # if namespace and database_schema:
@@ -120,20 +118,19 @@ with col1:
 
 with col2:
     # Display chat history
-    for sender, message in st.session_state.chat_history:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+    for message in st.session_state.chat_history:
+        st.chat_message(message["role"]).markdown(message["content"])
 
     # React to user input
-    if prompt := st.chat_input("What is up?"):
+    if prompt := st.chat_input("How can I assist you?"):
         # Display user message in chat message container
         st.chat_message("user").markdown(prompt)
         # Add user message to chat history
-        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.session_state.chat_history.append({"role": "user", "content": prompt})
 
         response = assistant_interaction(prompt)
         # Display assistant response in chat message container
         with st.chat_message("assistant"):
             st.markdown(response)
         # Add assistant response to chat history
-        st.session_state.messages.append({"role": "assistant", "content": response})
+        st.session_state.chat_history.append({"role": "assistant", "content": response})
