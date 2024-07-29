@@ -15,9 +15,11 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_iris import IRISVector
 
 class SQLZilla:
-    def __init__(self, engine, cnx):
-        self.engine = engine
-        self.cnx = cnx
+    def __init__(self, connection_string, openai_api_key):
+        self.openai_api_key = openai_api_key
+        self.iris_conn_str = connection_string
+        self.engine = create_engine(connection_string)
+        self.cnx = self.engine.connect().connection
         self.context = {}
         self.context["top_k"] = 3
         self.examples = [
@@ -82,7 +84,6 @@ class SQLZilla:
                 "query": "SELECT c.CrewNumber, c.Age, c.Sex, e.EventDate, e.LocationCity, e.LocationState FROM Aviation.Crew c JOIN Aviation.Event e ON c.EventId = e.EventId WHERE c.Injury = 'Serious'"
             },
         ]
-
 
     def get_table_definitions_array(self, schema, table=None):
         cursor = self.cnx.cursor()
@@ -197,16 +198,16 @@ class SQLZilla:
         new_tables_docs, tables_docs_ids = self.filter_not_in_collection(
             "sql_tables", 
             self.tables_docs, 
-            self.get_ids_from_string_array([x.page_content for x in tables_docs])
+            self.get_ids_from_string_array([x.page_content for x in self.tables_docs])
         )
         self.tables_docs_ids = tables_docs_ids
 
     
     def prompt(self, input):
         db = IRISVector.from_documents(
-            embedding = OpenAIEmbeddings(), 
+            embedding = OpenAIEmbeddings(openai_api_key=self.openai_api_key), 
             documents = self.tables_docs,
-            connection_string=iris_conn_str,
+            connection_string= self.iris_conn_str,
             collection_name="sql_tables",
             ids=self.tables_docs_ids
         )
@@ -252,7 +253,7 @@ class SQLZilla:
             "input": input
         })
 
-        model = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
+        model = ChatOpenAI(model="gpt-3.5-turbo", temperature=0, api_key=self.openai_api_key)
         output_parser = StrOutputParser()
         chain_model = prompt | model | output_parser
         response = chain_model.invoke({

@@ -5,6 +5,7 @@ from sqlalchemy import create_engine
 import pandas as pd
 from dotenv import load_dotenv
 import os
+from sqlzilla import SQLZilla
 
 # Load environment variables from .env file
 load_dotenv()
@@ -27,13 +28,15 @@ if 'chat_history' not in st.session_state:
 if 'query_result' not in st.session_state:
     st.session_state.query_result = None
 
-def db_connection():
+def db_connection_str():
     user = st.session_state.user
     pwd = st.session_state.pwd
     host = st.session_state.hostname
     prt = st.session_state.port
     ns = st.session_state.namespace
-    iris_conn_str = f"iris://{user}:{pwd}@{host}:{prt}/{ns}"
+    return f"iris://{user}:{pwd}@{host}:{prt}/{ns}"
+
+def db_connection(iris_conn_str):
     engine = create_engine(iris_conn_str)
     return engine.connect().connection
 
@@ -48,13 +51,15 @@ def run_query():
     except Exception as e:
         st.error(f"Error running query: {str(e)}")
 
+def assistant_interaction(sqlzilla, prompt):
+    response = sqlzilla.prompt(prompt)
+    st.session_state.chat_history.append({"role": "user", "content": prompt})
+    st.session_state.chat_history.append({"role": "assistant", "content": response})
 
-# Function to simulate assistant interaction
-def assistant_interaction(prompt):
-    # This is a placeholder. In a real scenario, you'd call an AI service here.
-    response = f"Assistant: I've analyzed your prompt '{prompt}'. Here's a suggested SQL query:\n\nSELECT * FROM Table WHERE condition = 'value';"
-    st.session_state.chat_history.append(("User", prompt))
-    st.session_state.chat_history.append(("Assistant", response))
+    # Check if the response contains SQL code and update the editor
+    if "SELECT" in response.upper():
+        st.session_state.query_result = response
+    
     return response
 
 left_co, cent_co, last_co = st.columns(3)
@@ -89,7 +94,10 @@ else:
 # Initial prompts for namespace and database schema
 database_schema = st.text_input('Enter Database Schema')
 
-if st.session_state.namespace and database_schema:
+if st.session_state.namespace and database_schema and st.session_state.openai_api_key:
+    sqlzilla = SQLZilla(db_connection_str(), st.session_state.openai_api_key)
+    context = sqlzilla.schema_context_management(database_schema)
+
     # Layout for the page
     col1, col2 = st.columns(2)
 
@@ -122,11 +130,11 @@ if st.session_state.namespace and database_schema:
             # Add user message to chat history
             st.session_state.chat_history.append({"role": "user", "content": prompt})
 
-            response = assistant_interaction(prompt)
+            response = assistant_interaction(sqlzilla, prompt)
             # Display assistant response in chat message container
             with st.chat_message("assistant"):
                 st.markdown(response)
             # Add assistant response to chat history
             st.session_state.chat_history.append({"role": "assistant", "content": response})
 else:
-    st.warning('Please select a namespace and enter a database schema to proceed.')
+    st.warning('Please select a database schema to proceed.')
