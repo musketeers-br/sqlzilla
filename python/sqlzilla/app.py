@@ -27,6 +27,8 @@ if 'chat_history' not in st.session_state:
     st.session_state.chat_history = [{"role": "assistant", "content": "I'm SQLZilla, your friendly AI SQL helper.\n Ask me anything, from basic queries to complex optimizations."}]
 if 'query_result' not in st.session_state:
     st.session_state.query_result = None
+if 'code_text' not in st.session_state:
+    st.session_state.code_text = ''
 
 def db_connection_str():
     user = st.session_state.user
@@ -37,20 +39,19 @@ def db_connection_str():
     return f"iris://{user}:{pwd}@{host}:{prt}/{ns}"
 
 def db_connection(iris_conn_str):
-    engine = create_engine(iris_conn_str)
-    return engine.connect().connection
+    return create_engine(iris_conn_str)
 
 # Function to run query using SQLAlchemy and return result as DataFrame
 def run_query():
     try:
         engine = db_connection(db_connection_str())
-        with engine.connect() as connection:
-            result = connection.execute(st.session_state.query)
-            data = result.fetchall()
-            columns = result.keys()
-            if data:
-                st.session_state.query_result = pd.DataFrame(data, columns=columns)
-            st.success("Query executed successfully!")
+        cursor = engine.connect().cursor()
+        result = cursor.execute(st.session_state.code_text)
+        data = result.fetchall()
+        columns = result.keys()
+        if data:
+            st.session_state.query_result = pd.DataFrame(data, columns=columns)
+        st.success("Query executed successfully!")
     except Exception as e:
         st.error(f"Error running query: {str(e)}")
 
@@ -101,15 +102,21 @@ if st.session_state.namespace and database_schema and st.session_state.openai_ap
     col1, col2 = st.columns(2)
 
     with col1:
-        code_editor("", lang="sql", height=[10, 100], shortcuts="vscode")
+        editor_dict = code_editor(st.session_state.code_text, lang="sql", height=[10, 100], shortcuts="vscode")
+
+        if len(editor_dict['text']) != 0:
+            st.session_state.code_text = editor_dict['text']
+
         # Buttons to run, save, and clear the query in a single row
         run_button, clear_button = st.columns([1, 1])
         with run_button:
             if st.button('Execute'):
+                st.session_state.code_text = editor_dict['text']
                 run_query()
         with clear_button:
             if st.button('Clear'):
-                st.session_state.query = ""
+                st.session_state.code_text = ""
+                editor_dict['text'] = ""
                 st.session_state.query_result = None
         
         # Display query result as dataframe
