@@ -55,10 +55,6 @@ def assistant_interaction(sqlzilla, prompt):
     response = sqlzilla.prompt(prompt)
     st.session_state.chat_history.append({"role": "user", "content": prompt})
     st.session_state.chat_history.append({"role": "assistant", "content": response})
-
-    # Check if the response contains SQL code and update the editor
-    if "SELECT" in response.upper():
-        st.session_state.query_result = response
     
     return response
 
@@ -93,6 +89,7 @@ else:
 
 # Initial prompts for namespace and database schema
 database_schema = st.text_input('Enter Database Schema')
+editor = code_editor("-- your query", lang="sql", height=[10, 100], shortcuts="vscode")
 
 if st.session_state.namespace and database_schema and st.session_state.openai_api_key:
     sqlzilla = SQLZilla(db_connection_str(), st.session_state.openai_api_key)
@@ -102,8 +99,7 @@ if st.session_state.namespace and database_schema and st.session_state.openai_ap
     col1, col2 = st.columns(2)
 
     with col1:
-        code_editor("-- your query", lang="sql", height=[10, 100], shortcuts="vscode")
-        
+        st.write(editor)
         # Buttons to run, save, and clear the query in a single row
         run_button, clear_button = st.columns([1, 1])
         with run_button:
@@ -131,6 +127,11 @@ if st.session_state.namespace and database_schema and st.session_state.openai_ap
             st.session_state.chat_history.append({"role": "user", "content": prompt})
 
             response = assistant_interaction(sqlzilla, prompt)
+
+            # Check if the response contains SQL code and update the editor
+            if "SELECT" in response.upper():
+                st.session_state.query_result = response
+                editor.text = response
             # Display assistant response in chat message container
             with st.chat_message("assistant"):
                 st.markdown(response)

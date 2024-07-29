@@ -204,6 +204,7 @@ class SQLZilla:
 
     
     def prompt(self, input):
+        self.context["input"] = input
         db = IRISVector.from_documents(
             embedding = OpenAIEmbeddings(openai_api_key=self.openai_api_key), 
             documents = self.tables_docs,
@@ -211,12 +212,12 @@ class SQLZilla:
             collection_name="sql_tables",
             ids=self.tables_docs_ids
         )
-        relevant_tables_docs = db.similarity_search(self.context["input"])
+        relevant_tables_docs = db.similarity_search(input)
         relevant_tables_docs_indices = [x.metadata["id"] for x in relevant_tables_docs]
         indices = self.table_df["id"].isin(relevant_tables_docs_indices)
         relevant_tables_array = [x for x in self.table_df[indices]["col_def"]]
         self.context["table_info"] = "\n\n".join(relevant_tables_array)
-        new_sql_samples, sql_samples_ids = self.ilter_not_in_collection(
+        new_sql_samples, sql_samples_ids = self.filter_not_in_collection(
             "sql_samples", 
             self.examples, 
             self.get_ids_from_string_array([x['input'] for x in self.examples])
@@ -246,12 +247,6 @@ class SQLZilla:
             + ChatPromptTemplate.from_messages([("system", prompt_sql_few_shots_template)])
             + ChatPromptTemplate.from_messages([("human", user_prompt)])
         )
-        prompt_value = prompt.invoke({
-            "top_k": self.context["top_k"],
-            "table_info": self.context["table_info"],
-            "examples_value": self.context["examples_value"],
-            "input": input
-        })
 
         model = ChatOpenAI(model="gpt-3.5-turbo", temperature=0, api_key=self.openai_api_key)
         output_parser = StrOutputParser()
@@ -259,7 +254,7 @@ class SQLZilla:
         response = chain_model.invoke({
             "top_k": self.context["top_k"],
             "table_info": self.context["table_info"],
-            "examples_value": self.context["examples_value"],
+            "examples_value": self.examples,
             "input": input
         })
         return response
