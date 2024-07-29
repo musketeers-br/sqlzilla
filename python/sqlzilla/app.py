@@ -43,9 +43,11 @@ def db_connection(iris_conn_str):
 
 # Function to run query using SQLAlchemy and return result as DataFrame
 def run_query():
+    if st.session_state.code_text is None:
+        return
     try:
         engine = db_connection(db_connection_str())
-        cursor = engine.connect().cursor()
+        cursor = engine.connect().connection.cursor()
         result = cursor.execute(st.session_state.code_text)
         data = result.fetchall()
         columns = result.keys()
