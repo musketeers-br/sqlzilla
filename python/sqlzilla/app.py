@@ -43,10 +43,13 @@ def db_connection(iris_conn_str):
 # Function to run query using SQLAlchemy and return result as DataFrame
 def run_query():
     try:
-        engine = db_connection()
+        engine = db_connection(db_connection_str())
         with engine.connect() as connection:
-            result = pd.read_sql_query(st.session_state.query, connection)
-            st.session_state.query_result = result
+            result = connection.execute(st.session_state.query)
+            data = result.fetchall()
+            columns = result.keys()
+            if data:
+                st.session_state.query_result = pd.DataFrame(data, columns=columns)
             st.success("Query executed successfully!")
     except Exception as e:
         st.error(f"Error running query: {str(e)}")
@@ -89,7 +92,6 @@ else:
 
 # Initial prompts for namespace and database schema
 database_schema = st.text_input('Enter Database Schema')
-editor = code_editor("-- your query", lang="sql", height=[10, 100], shortcuts="vscode")
 
 if st.session_state.namespace and database_schema and st.session_state.openai_api_key:
     sqlzilla = SQLZilla(db_connection_str(), st.session_state.openai_api_key)
@@ -99,7 +101,7 @@ if st.session_state.namespace and database_schema and st.session_state.openai_ap
     col1, col2 = st.columns(2)
 
     with col1:
-        st.write(editor)
+        code_editor("", lang="sql", height=[10, 100], shortcuts="vscode")
         # Buttons to run, save, and clear the query in a single row
         run_button, clear_button = st.columns([1, 1])
         with run_button:
@@ -108,6 +110,7 @@ if st.session_state.namespace and database_schema and st.session_state.openai_ap
         with clear_button:
             if st.button('Clear'):
                 st.session_state.query = ""
+                st.session_state.query_result = None
         
         # Display query result as dataframe
         if st.session_state.query_result is not None:
@@ -130,8 +133,7 @@ if st.session_state.namespace and database_schema and st.session_state.openai_ap
 
             # Check if the response contains SQL code and update the editor
             if "SELECT" in response.upper():
-                st.session_state.query_result = response
-                editor.text = response
+                st.session_state.query = response
             # Display assistant response in chat message container
             with st.chat_message("assistant"):
                 st.markdown(response)
