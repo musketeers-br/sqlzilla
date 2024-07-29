@@ -1,3 +1,7 @@
 streamlit
 streamlit-code-editor
 requests
+langchain
+langchain-openai
+langchain-iris
+SQLAlchemy
