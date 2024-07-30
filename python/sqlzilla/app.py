@@ -105,7 +105,7 @@ if st.session_state.namespace and database_schema and st.session_state.openai_ap
     col1, col2 = st.columns(2)
 
     with col1:
-        editor_dict = code_editor(st.session_state.code_text, lang="sql", height=[10, 100], shortcuts="vscode")
+        editor_dict = code_editor(st.session_state.code_text, lang="sql", height=[10, 100], shortcuts="vscode", options={"placeholder":"Add your SQL here to test...", "showLineNumbers":True})
 
         if len(editor_dict['text']) != 0:
             st.session_state.code_text = editor_dict['text']
