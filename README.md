@@ -54,7 +54,7 @@ $ git clone https://github.com/musketeers-br/sqlzilla.git
 Open the terminal in this directory and run:
 
 ```bash
-$ docker-compose build
+$ docker-compose build --no-cache --progress=plain
 $ docker-compose up -d
 ```
 
@@ -72,13 +72,17 @@ $ docker-compose up -d
 
 ### Web Version
 1. Go to [http://localhost:8501/](http://localhost:8501/).
-2. Enter your OpenAI API key for the AI assistant.
-3. Configure the database connection details.
+2. Enter your OpenAI API key for the AI assistant you also can add a `.env` file with the API key.
+3. Configure the database connection details (default configuration for docker user).
 4. Write SQL queries in the editor or chat window.
 5. Click "Execute" to run queries and see results.
 
 ## Dream Team
 
-* [José Roberto Pereira](https://community.intersystems.com/user/jos%C3%A9-roberto-pereira-0)
+Our team is a group of passionate individuals dedicated to tackling complex challenges and slaying metaphorical giants (think Godzilla, not spreadsheets)
+
+![Musketeers tokusatsu style](./assets/tokusatsu_team.png)
+
 * [Henry Pereira](https://community.intersystems.com/user/henry-pereira)
+* [José Roberto Pereira](https://community.intersystems.com/user/jos%C3%A9-roberto-pereira-0)
 * [Henrique Dias](https://community.intersystems.com/user/henrique-dias-2)
