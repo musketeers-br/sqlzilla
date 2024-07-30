@@ -40,9 +40,7 @@ def db_connection_str():
 
 def assistant_interaction(sqlzilla, prompt):
     response = sqlzilla.prompt(prompt)
-    st.session_state.chat_history.append({"role": "user", "content": prompt})
     st.session_state.chat_history.append({"role": "assistant", "content": response})
-    
     return response
 
 left_co, cent_co, last_co = st.columns(3)
@@ -121,6 +119,11 @@ if st.session_state.namespace and database_schema and st.session_state.openai_ap
             # Check if the response contains SQL code and update the editor
             if "SELECT" in response.upper():
                 st.session_state.query = response
+                st.session_state.code_text = response
+                editor_dict['text'] = response
+                data = sqlzilla.execute_query(st.session_state.code_text)
+                st.session_state.query_result = pd.DataFrame(data)
+                st.rerun()
             # Display assistant response in chat message container
             with st.chat_message("assistant"):
                 st.markdown(response)
