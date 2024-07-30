@@ -43,7 +43,8 @@ def db_connection(iris_conn_str):
 
 # Function to run query using SQLAlchemy and return result as DataFrame
 def run_query():
-    if st.session_state.code_text is None:
+    if st.session_state.code_text is None or st.session_state.code_text.strip() == "":
+        st.warning("Please enter a SQL query.")
         return
     try:
         engine = db_connection(db_connection_str())
