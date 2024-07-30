@@ -38,26 +38,6 @@ def db_connection_str():
     ns = st.session_state.namespace
     return f"iris://{user}:{pwd}@{host}:{prt}/{ns}"
 
-def db_connection(iris_conn_str):
-    return create_engine(iris_conn_str)
-
-# Function to run query using SQLAlchemy and return result as DataFrame
-def run_query():
-    if st.session_state.code_text is None or st.session_state.code_text.strip() == "":
-        st.warning("Please enter a SQL query.")
-        return
-    try:
-        engine = db_connection(db_connection_str())
-        cursor = engine.connect().connection.cursor()
-        result = cursor.execute(st.session_state.code_text)
-        data = result.fetchall()
-        columns = result.keys()
-        if data:
-            st.session_state.query_result = pd.DataFrame(data, columns=columns)
-        st.success("Query executed successfully!")
-    except Exception as e:
-        st.error(f"Error running query: {str(e)}")
-
 def assistant_interaction(sqlzilla, prompt):
     response = sqlzilla.prompt(prompt)
     st.session_state.chat_history.append({"role": "user", "content": prompt})
@@ -105,27 +85,24 @@ if st.session_state.namespace and database_schema and st.session_state.openai_ap
     col1, col2 = st.columns(2)
 
     with col1:
-        editor_dict = code_editor(st.session_state.code_text, lang="sql", height=[10, 100], shortcuts="vscode", options={"placeholder":"Add your SQL here to test...", "showLineNumbers":True})
+        editor_btn = [ {
+            "name": "Execute", "feather": "Play",
+            "primary": True,"hasText": True, "alwaysOn": True,
+            "showWithIcon": True,"commands": ["submit"],
+            "style": {
+                "bottom": "0.44rem",
+                "right": "0.4rem"
+            }
+        },]
+        editor_dict = code_editor(st.session_state.code_text, lang="sql", height=[10, 100], shortcuts="vscode", options={"placeholder":"Add your SQL here to test...", "showLineNumbers":True}, buttons=editor_btn)
 
-        if len(editor_dict['text']) != 0:
+        if editor_dict['type'] == "submit":
             st.session_state.code_text = editor_dict['text']
-
-        # Buttons to run, save, and clear the query in a single row
-        run_button, clear_button = st.columns([1, 1])
-        with run_button:
-            if st.button('Execute'):
-                st.session_state.code_text = editor_dict['text']
-                run_query()
-        with clear_button:
-            if st.button('Clear'):
-                st.session_state.code_text = ""
-                editor_dict['text'] = ""
-                st.session_state.query_result = None
-        
-        # Display query result as dataframe
-        if st.session_state.query_result is not None:
-            st.dataframe(st.session_state.query_result)
-        
+            data = sqlzilla.execute_query(st.session_state.code_text)
+            # Display query result as dataframe
+            if (data is not None):
+                st.session_state.query_result = pd.DataFrame(data)
+                st.dataframe(st.session_state.query_result)
 
     with col2:
         # Display chat history

@@ -1,8 +1,5 @@
-
 from sqlalchemy import create_engine
-
 import hashlib
-
 import pandas as pd;
 
 from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
@@ -258,3 +255,11 @@ class SQLZilla:
             "input": input
         })
         return response
+
+    def execute_query(self, query):
+        cursor = self.cnx.cursor()
+        # Execute the query
+        cursor.execute(query)
+
+        # Fetch the results
+        return cursor.fetchall()
