@@ -77,6 +77,12 @@ $ docker-compose up -d
 4. Write SQL queries in the editor or chat window.
 5. Click "Execute" to run queries and see results.
 
+ 
+## See in action
+
+https://github.com/user-attachments/assets/b85e16fb-fd3a-4f7c-80a4-72841834e27e
+
+
 ## Dream Team
 
 Our team is a group of passionate individuals dedicated to tackling complex challenges and slaying metaphorical giants (think Godzilla, not spreadsheets)
