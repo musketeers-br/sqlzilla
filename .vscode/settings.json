@@ -16,6 +16,8 @@
         "internalPort": 52773
       },
       "links": {
+        "Jupyter Notebook": "http://localhost:29999/",
+        "SQLZilla Web": "http://localhost:8501/",
         "UnitTest Portal": "${serverUrl}/csp/sys/%25UnitTest.Portal.Home.cls?$NAMESPACE=IRISAPP"
       }
     },
