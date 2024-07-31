@@ -82,6 +82,7 @@ $ docker-compose up -d
 
 https://github.com/user-attachments/assets/b85e16fb-fd3a-4f7c-80a4-72841834e27e
 
+[YouTube short in action](https://youtube.com/shorts/hpSW5WDoPo4?feature=share)
 
 ## Dream Team
 
