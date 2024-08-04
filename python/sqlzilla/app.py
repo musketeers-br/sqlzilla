@@ -79,6 +79,7 @@ else:
             st.session_state.openai_api_key = api_key
             st.success("Configuration updated!")
 
+database_schema = None
 if (st.session_state.namespace and st.session_state.openai_api_key):
     sqlzilla = SQLZilla(db_connection_str(), st.session_state.openai_api_key)
     # Initial prompts for namespace and database schema
