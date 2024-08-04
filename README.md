@@ -5,6 +5,7 @@
 SQLzilla leverages the power of Python and AI to simplify data access through natural language SQL query generation, bridging the gap between complex data queries and users with minimal programming experience.
 
 ![SQLZilla made by AI](./assets/logo.png)
+![SQLZilla screenshot](./assets/Screenshot%202024-08-03%20at%201_33_18%20PM.png)
 
 ## Description
 
