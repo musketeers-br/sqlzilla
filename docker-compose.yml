@@ -33,3 +33,5 @@ services:
       dockerfile: Dockerfile-streamlit
     ports:
       - 8501:8501
+    volumes:
+      - ./python/sqlzilla/:/app/

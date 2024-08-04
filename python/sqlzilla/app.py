@@ -5,6 +5,7 @@ from sqlalchemy import create_engine
 import pandas as pd
 from dotenv import load_dotenv
 import os
+from sqlalchemy import create_engine
 from sqlzilla import SQLZilla
 
 # Load environment variables from .env file
@@ -73,7 +74,29 @@ else:
             st.success("Configuration updated!")
 
 # Initial prompts for namespace and database schema
-database_schema = st.text_input('Enter Database Schema')
+# database_schema = st.text_input('Enter Database Schema')
+try:
+    connection_string = db_connection_str()
+    engine = create_engine(connection_string)
+    cnx = engine.connect().connection
+    cursor = cnx.cursor()
+    query = """
+    SELECT SCHEMA_NAME
+    FROM INFORMATION_SCHEMA.SCHEMATA
+    """
+    params = []
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    options = [row[0] for row in rows or []]
+    database_schema = st.selectbox(
+        'Enter Database Schema', 
+        options,
+        index=None,
+        placeholder="Select database schema...",
+    )
+except:
+    database_schema = st.text_input('Enter Database Schema')
+    st.warning('Was not possible to retrieve database schemas. Please provide it manually.')
 
 if st.session_state.namespace and database_schema and st.session_state.openai_api_key:
     sqlzilla = SQLZilla(db_connection_str(), st.session_state.openai_api_key)

@@ -1,6 +1,6 @@
 FROM python:3.9-slim
 
-COPY ./python/sqlzilla /app
+COPY ./python/sqlzilla/ /app/
 
 WORKDIR /app
 
