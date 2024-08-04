@@ -41,7 +41,13 @@ def db_connection_str():
 
 def assistant_interaction(sqlzilla, prompt):
     response = sqlzilla.prompt(prompt)
+    response = clean_response(response)
     st.session_state.chat_history.append({"role": "assistant", "content": response})
+    return response
+
+def clean_response(response):
+    if response.startswith("```sql"):
+        response = response[6:-3]
     return response
 
 left_co, cent_co, last_co = st.columns(3)
