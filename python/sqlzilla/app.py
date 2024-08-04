@@ -79,33 +79,27 @@ else:
             st.session_state.openai_api_key = api_key
             st.success("Configuration updated!")
 
-# Initial prompts for namespace and database schema
-# database_schema = st.text_input('Enter Database Schema')
-try:
-    connection_string = db_connection_str()
-    engine = create_engine(connection_string)
-    cnx = engine.connect().connection
-    cursor = cnx.cursor()
-    query = """
-    SELECT SCHEMA_NAME
-    FROM INFORMATION_SCHEMA.SCHEMATA
-    """
-    params = []
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
-    options = [row[0] for row in rows or []]
-    database_schema = st.selectbox(
-        'Enter Database Schema', 
-        options,
-        index=None,
-        placeholder="Select database schema...",
-    )
-except:
-    database_schema = st.text_input('Enter Database Schema')
-    st.warning('Was not possible to retrieve database schemas. Please provide it manually.')
-
-if st.session_state.namespace and database_schema and st.session_state.openai_api_key:
+if (st.session_state.namespace and st.session_state.openai_api_key):
     sqlzilla = SQLZilla(db_connection_str(), st.session_state.openai_api_key)
+    # Initial prompts for namespace and database schema
+    try:
+        query = """
+        SELECT SCHEMA_NAME
+        FROM INFORMATION_SCHEMA.SCHEMATA
+        """
+        rows = sqlzilla.execute_query(query)
+        options = [row[0] for row in rows or []]
+        database_schema = st.selectbox(
+            'Enter Database Schema', 
+            options,
+            index=None,
+            placeholder="Select database schema...",
+        )
+    except:
+        database_schema = st.text_input('Enter Database Schema')
+        st.warning('Was not possible to retrieve database schemas. Please provide it manually.')
+
+if (st.session_state.namespace and database_schema and st.session_state.openai_api_key):
     context = sqlzilla.schema_context_management(database_schema)
 
     # Layout for the page
