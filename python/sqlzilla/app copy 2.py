@@ -12,6 +12,8 @@ from sqlzilla import SQLZilla
 load_dotenv()
 
 # Initialize session state
+if '_cnx' not in st.session_state:
+    st.session_state._cnx = None
 if 'hostname' not in st.session_state:
     st.session_state.hostname = 'sqlzilla-iris-1'
 if 'user' not in st.session_state:
@@ -79,20 +81,9 @@ else:
             st.session_state.openai_api_key = api_key
             st.success("Configuration updated!")
 
-# from sqlalchemy import create_engine
-
-# def log(msg):
-#     import os
-#     os.write(1, f"{msg}\n".encode())
-    
-# engine = create_engine(db_connection_str(), pool_size=1, max_overflow=0)
-# cnx = engine.connect().connection
-# log("Connection established")
-
 database_schema = None
 if (st.session_state.namespace and st.session_state.openai_api_key):
-            
-    sqlzilla = SQLZilla(db_connection_str(), st.session_state.openai_api_key)
+    sqlzilla = SQLZilla(db_connection_str(), st.session_state.openai_api_key, st.session_state)
     # Initial prompts for namespace and database schema
     try:
         query = """
@@ -119,6 +110,14 @@ if (st.session_state.namespace and database_schema and st.session_state.openai_a
 
     with col1:
         editor_btn = [ {
+        #     "name": "Save on library", "feather": "Save",
+        #     "primary": False,"hasText": True, "alwaysOn": True,
+        #     "showWithIcon": True,"commands": ["save_lib"],
+        #     "style": {
+        #         "bottom": "0.44rem",
+        #         "left": "0.4rem"
+        #     }
+        # },{
             "name": "Execute", "feather": "Play",
             "primary": True,"hasText": True, "alwaysOn": True,
             "showWithIcon": True,"commands": ["submit"],
@@ -136,6 +135,8 @@ if (st.session_state.namespace and database_schema and st.session_state.openai_a
             if (data is not None):
                 st.session_state.query_result = pd.DataFrame(data)
                 st.dataframe(st.session_state.query_result)
+        elif editor_dict['type'] == "save_lib":
+            pass
 
     with col2:
         # Display chat history
@@ -156,8 +157,11 @@ if (st.session_state.namespace and database_schema and st.session_state.openai_a
                 st.session_state.query = response
                 st.session_state.code_text = response
                 editor_dict['text'] = response
-                data = sqlzilla.execute_query(st.session_state.code_text)
-                st.session_state.query_result = pd.DataFrame(data)
+                try:
+                    data = sqlzilla.execute_query(st.session_state.code_text)
+                    st.session_state.query_result = pd.DataFrame(data)
+                except Exception as e:
+                    st.error(f"Error: {str(e)}")
                 st.rerun()
             # Display assistant response in chat message container
             with st.chat_message("assistant"):
