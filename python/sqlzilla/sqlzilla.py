@@ -305,7 +305,7 @@ Return just plain SQL; don't apply any kind of formatting.
         response = self.create_chain_model().invoke({
             "top_k": self.context["top_k"],
             "table_info": self.context["table_info"],
-            "examples_value": self.get_examples(),
+            "examples_value": self.context["examples_value"],
             "input": input
         })
         return response
