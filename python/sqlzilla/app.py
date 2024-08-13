@@ -30,6 +30,8 @@ if 'query_result' not in st.session_state:
     st.session_state.query_result = None
 if 'code_text' not in st.session_state:
     st.session_state.code_text = ''
+if 'prompt' not in st.session_state:
+    st.session_state.prompt = ''
 
 def db_connection_str():
     user = st.session_state.user
@@ -81,7 +83,7 @@ else:
 
 database_schema = None
 if (st.session_state.namespace and st.session_state.openai_api_key):
-    sqlzilla = SQLZilla(db_connection_str(), st.session_state.openai_api_key)
+    sqlzilla = SQLZilla(db_connection_str(), st.session_state.openai_api_key, database_schema)
     # Initial prompts for namespace and database schema
     try:
         query = """
@@ -126,6 +128,9 @@ if (st.session_state.namespace and database_schema and st.session_state.openai_a
                 st.session_state.query_result = pd.DataFrame(data)
                 st.dataframe(st.session_state.query_result)
 
+        if st.button("Save on library"):
+            sqlzilla.add_example(st.session_state.prompt, st.session_state.code_text)
+
     with col2:
         # Display chat history
         for message in st.session_state.chat_history:
@@ -133,6 +138,7 @@ if (st.session_state.namespace and database_schema and st.session_state.openai_a
 
         # React to user input
         if prompt := st.chat_input("How can I assist you?"):
+            st.session_state.prompt = prompt
             # Display user message in chat message container
             st.chat_message("user").markdown(prompt)
             # Add user message to chat history
@@ -145,8 +151,8 @@ if (st.session_state.namespace and database_schema and st.session_state.openai_a
                 st.session_state.query = response
                 st.session_state.code_text = response
                 editor_dict['text'] = response
-                data = sqlzilla.execute_query(st.session_state.code_text)
-                st.session_state.query_result = pd.DataFrame(data)
+                # data = sqlzilla.execute_query(st.session_state.code_text)
+                # st.session_state.query_result = pd.DataFrame(data)
                 st.rerun()
             # Display assistant response in chat message container
             with st.chat_message("assistant"):
