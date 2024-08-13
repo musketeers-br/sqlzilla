@@ -13,23 +13,13 @@ from langchain_iris import IRISVector
 
 class SQLZilla:
     def __init__(self, connection_string, openai_api_key):
-        self.log('criou')
         self.openai_api_key = openai_api_key
-        # self.iris_conn_str = connection_string
+        self.iris_conn_str = connection_string
         self.engine = create_engine(connection_string)
-        self.conn_wrapper = self.engine.connect()
-        self.connection = self.conn_wrapper.connection
-        self.log('connection opened')
+        self.cnx = self.engine.connect().connection
         self.context = {}
         self.context["top_k"] = 3
-        self.tables_vector_store = None
-        self.example_selector = None
-        self.chain_model = None
-        self.example_prompt = None
-        self.create_chain_model()
-    
-    def get_examples(self):
-        return [
+        self.examples = [
             {
                 "input": "List all aircrafts.", 
                 "query": "SELECT * FROM Aviation.Aircraft"
@@ -92,20 +82,8 @@ class SQLZilla:
             },
         ]
 
-    def __del__(self):
-        self.log('deletou')
-        if not self.connection is None:
-            self.log('connection closed')
-            self.connection.close()
-        if not self.engine is None:
-            self.engine.dispose()
-
-    def log(self, msg):
-        import os
-        os.write(1, f"{msg}\n".encode())
-
     def get_table_definitions_array(self, schema, table=None):
-        cursor = self.connection.cursor()
+        cursor = self.cnx.cursor()
 
         # Base query to get columns information
         query = """
@@ -177,7 +155,7 @@ class SQLZilla:
     def exists_in_db(self, collection_name, id):
         schema_name = "SQLUser"
         
-        cursor = self.connection.cursor()
+        cursor = self.cnx.cursor()
         query = f"""
         SELECT TOP 1 id
         FROM INFORMATION_SCHEMA.TABLES 
@@ -191,7 +169,7 @@ class SQLZilla:
 
         del cursor, query, params, rows
         
-        cursor = self.connection.cursor()
+        cursor = self.cnx.cursor()
         query = f"""
         SELECT TOP 1 id
         FROM {collection_name}
@@ -220,39 +198,27 @@ class SQLZilla:
             self.get_ids_from_string_array([x.page_content for x in self.tables_docs])
         )
         self.tables_docs_ids = tables_docs_ids
-        if self.tables_vector_store is None:
-            self.tables_vector_store = IRISVector.from_documents(
-                embedding = OpenAIEmbeddings(openai_api_key=self.openai_api_key), 
-                documents = self.tables_docs,
-                # connection_string= self.iris_conn_str,
-                connection=self.conn_wrapper,
-                collection_name="sql_tables",
-                ids=self.tables_docs_ids
-            )
-        
-        if self.example_selector is None:
-            examples = self.get_examples()
-            new_sql_samples, sql_samples_ids = self.filter_not_in_collection(
-                "sql_samples", 
-                examples, 
-                self.get_ids_from_string_array([x['input'] for x in examples])
-            )
-            self.example_selector = SemanticSimilarityExampleSelector.from_examples(
-                new_sql_samples,
-                OpenAIEmbeddings(openai_api_key=self.openai_api_key),
-                IRISVector,
-                k=5,
-                input_keys=["input"],
-                # connection_string=self.iris_conn_str,
-                connection=self.conn_wrapper,
-                collection_name="sql_samples",
-                ids=sql_samples_ids
-            )
 
-    def create_chain_model(self):
-        if not self.chain_model is None:
-            return self.chain_model
-        
+    
+    def prompt(self, input):
+        self.context["input"] = input
+        db = IRISVector.from_documents(
+            embedding = OpenAIEmbeddings(openai_api_key=self.openai_api_key), 
+            documents = self.tables_docs,
+            connection_string= self.iris_conn_str,
+            collection_name="sql_tables",
+            ids=self.tables_docs_ids
+        )
+        relevant_tables_docs = db.similarity_search(input)
+        relevant_tables_docs_indices = [x.metadata["id"] for x in relevant_tables_docs]
+        indices = self.table_df["id"].isin(relevant_tables_docs_indices)
+        relevant_tables_array = [x for x in self.table_df[indices]["col_def"]]
+        self.context["table_info"] = "\n\n".join(relevant_tables_array)
+        new_sql_samples, sql_samples_ids = self.filter_not_in_collection(
+            "sql_samples", 
+            self.examples, 
+            self.get_ids_from_string_array([x['input'] for x in self.examples])
+        )
         iris_sql_template = """
 You are an InterSystems IRIS expert. Given an input question, first create a syntactically correct InterSystems IRIS query to run and return the answer to the input question.
 Unless the user specifies in the question a specific number of examples to obtain, query for at most {top_k} results using the TOP clause as per InterSystems IRIS. You can order the results to return the most informative data in the database.
@@ -273,8 +239,6 @@ Return just plain SQL; don't apply any kind of formatting.
         """
         example_prompt_template = "User input: {input}\nSQL query: {query}"
         example_prompt = PromptTemplate.from_template(example_prompt_template)
-        self.example_prompt = example_prompt
-
         user_prompt = "\n"+example_prompt.invoke({"input": "{input}", "query": ""}).to_string()
         prompt = (
             ChatPromptTemplate.from_messages([("system", iris_sql_template)])
@@ -285,33 +249,17 @@ Return just plain SQL; don't apply any kind of formatting.
 
         model = ChatOpenAI(model="gpt-3.5-turbo", temperature=0, api_key=self.openai_api_key)
         output_parser = StrOutputParser()
-        self.chain_model = prompt | model | output_parser
-    
-    def prompt(self, input):
-        self.context["input"] = input
-
-        relevant_tables_docs = self.tables_vector_store.similarity_search(input)
-        relevant_tables_docs_indices = [x.metadata["id"] for x in relevant_tables_docs]
-        indices = self.table_df["id"].isin(relevant_tables_docs_indices)
-        relevant_tables_array = [x for x in self.table_df[indices]["col_def"]]
-        self.context["table_info"] = "\n\n".join(relevant_tables_array)
-
-        self.context["examples_value"] = "\n\n".join([
-            self.example_prompt.invoke(x).to_string() for x in self.example_selector.select_examples({"input": self.context["input"]})
-        ])
-
-        self.log(self.context)
-
-        response = self.create_chain_model().invoke({
+        chain_model = prompt | model | output_parser
+        response = chain_model.invoke({
             "top_k": self.context["top_k"],
             "table_info": self.context["table_info"],
-            "examples_value": self.context["examples_value"],
+            "examples_value": self.examples,
             "input": input
         })
         return response
 
     def execute_query(self, query):
-        cursor = self.connection.cursor()
+        cursor = self.cnx.cursor()
         # Execute the query
         cursor.execute(query)
 

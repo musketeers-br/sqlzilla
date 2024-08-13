@@ -12,14 +12,12 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_iris import IRISVector
 
 class SQLZilla:
-    def __init__(self, connection_string, openai_api_key):
+    def __init__(self, connection_string, openai_api_key, cnx=None):
         self.log('criou')
         self.openai_api_key = openai_api_key
-        # self.iris_conn_str = connection_string
-        self.engine = create_engine(connection_string)
-        self.conn_wrapper = self.engine.connect()
-        self.connection = self.conn_wrapper.connection
-        self.log('connection opened')
+        self.iris_conn_str = connection_string
+        self.engine = None
+        self.cnx = cnx
         self.context = {}
         self.context["top_k"] = 3
         self.tables_vector_store = None
@@ -27,6 +25,29 @@ class SQLZilla:
         self.chain_model = None
         self.example_prompt = None
         self.create_chain_model()
+
+    def __del__(self):
+        # self.get_connection().close()
+        # self.engine.dispose()
+        # self.cnx = None
+        self.log('deletou')
+
+    def log(self, msg):
+        import os
+        os.write(1, f"{msg}\n".encode())
+
+    def get_connection(self):
+        # if self.cnx is None:
+        #     self.engine = create_engine(self.iris_conn_str)
+        #     self.cnx = self.engine.connect().connection
+        if self.engine is None:
+            self.engine = create_engine(self.iris_conn_str)
+        if not self.cnx is None:
+            self.cnx.close()
+            self.log("connection closed")
+        self.cnx = self.engine.connect().connection
+        self.log("connection opened")
+        return self.cnx
     
     def get_examples(self):
         return [
@@ -92,20 +113,8 @@ class SQLZilla:
             },
         ]
 
-    def __del__(self):
-        self.log('deletou')
-        if not self.connection is None:
-            self.log('connection closed')
-            self.connection.close()
-        if not self.engine is None:
-            self.engine.dispose()
-
-    def log(self, msg):
-        import os
-        os.write(1, f"{msg}\n".encode())
-
     def get_table_definitions_array(self, schema, table=None):
-        cursor = self.connection.cursor()
+        cursor = self.get_connection().cursor()
 
         # Base query to get columns information
         query = """
@@ -177,7 +186,7 @@ class SQLZilla:
     def exists_in_db(self, collection_name, id):
         schema_name = "SQLUser"
         
-        cursor = self.connection.cursor()
+        cursor = self.get_connection().cursor()
         query = f"""
         SELECT TOP 1 id
         FROM INFORMATION_SCHEMA.TABLES 
@@ -191,7 +200,7 @@ class SQLZilla:
 
         del cursor, query, params, rows
         
-        cursor = self.connection.cursor()
+        cursor = self.get_connection().cursor()
         query = f"""
         SELECT TOP 1 id
         FROM {collection_name}
@@ -220,34 +229,30 @@ class SQLZilla:
             self.get_ids_from_string_array([x.page_content for x in self.tables_docs])
         )
         self.tables_docs_ids = tables_docs_ids
-        if self.tables_vector_store is None:
-            self.tables_vector_store = IRISVector.from_documents(
-                embedding = OpenAIEmbeddings(openai_api_key=self.openai_api_key), 
-                documents = self.tables_docs,
-                # connection_string= self.iris_conn_str,
-                connection=self.conn_wrapper,
-                collection_name="sql_tables",
-                ids=self.tables_docs_ids
-            )
+        self.tables_vector_store = IRISVector.from_documents(
+            embedding = OpenAIEmbeddings(openai_api_key=self.openai_api_key), 
+            documents = self.tables_docs,
+            connection_string= self.iris_conn_str,
+            collection_name="sql_tables",
+            ids=self.tables_docs_ids
+        )
         
-        if self.example_selector is None:
-            examples = self.get_examples()
-            new_sql_samples, sql_samples_ids = self.filter_not_in_collection(
-                "sql_samples", 
-                examples, 
-                self.get_ids_from_string_array([x['input'] for x in examples])
-            )
-            self.example_selector = SemanticSimilarityExampleSelector.from_examples(
-                new_sql_samples,
-                OpenAIEmbeddings(openai_api_key=self.openai_api_key),
-                IRISVector,
-                k=5,
-                input_keys=["input"],
-                # connection_string=self.iris_conn_str,
-                connection=self.conn_wrapper,
-                collection_name="sql_samples",
-                ids=sql_samples_ids
-            )
+        examples = self.get_examples()
+        new_sql_samples, sql_samples_ids = self.filter_not_in_collection(
+            "sql_samples", 
+            examples, 
+            self.get_ids_from_string_array([x['input'] for x in examples])
+        )
+        self.example_selector = SemanticSimilarityExampleSelector.from_examples(
+            new_sql_samples,
+            OpenAIEmbeddings(openai_api_key=self.openai_api_key),
+            IRISVector,
+            k=5,
+            input_keys=["input"],
+            connection_string=self.iris_conn_str,
+            collection_name="sql_samples",
+            ids=sql_samples_ids
+        )
 
     def create_chain_model(self):
         if not self.chain_model is None:
@@ -305,13 +310,13 @@ Return just plain SQL; don't apply any kind of formatting.
         response = self.create_chain_model().invoke({
             "top_k": self.context["top_k"],
             "table_info": self.context["table_info"],
-            "examples_value": self.context["examples_value"],
+            "examples_value": self.get_examples(),
             "input": input
         })
         return response
 
     def execute_query(self, query):
-        cursor = self.connection.cursor()
+        cursor = self.get_connection().cursor()
         # Execute the query
         cursor.execute(query)
 

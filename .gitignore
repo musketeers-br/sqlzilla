@@ -3,3 +3,4 @@ iris-main.log
 .env
 .git
 tmp
+__pycache__
