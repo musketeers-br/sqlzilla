@@ -83,7 +83,7 @@ else:
 
 database_schema = None
 if (st.session_state.namespace and st.session_state.openai_api_key):
-    sqlzilla = SQLZilla(db_connection_str(), st.session_state.openai_api_key, database_schema)
+    sqlzilla = SQLZilla(db_connection_str(), st.session_state.openai_api_key)
     # Initial prompts for namespace and database schema
     try:
         query = """
@@ -98,6 +98,7 @@ if (st.session_state.namespace and st.session_state.openai_api_key):
             index=None,
             placeholder="Select database schema...",
         )
+        sqlzilla.schema_name = database_schema
     except:
         database_schema = st.text_input('Enter Database Schema')
         st.warning('Was not possible to retrieve database schemas. Please provide it manually.')
@@ -130,6 +131,7 @@ if (st.session_state.namespace and database_schema and st.session_state.openai_a
 
         if st.button("Save on library"):
             sqlzilla.add_example(st.session_state.prompt, st.session_state.code_text)
+            st.success("Saved on library!")
 
     with col2:
         # Display chat history

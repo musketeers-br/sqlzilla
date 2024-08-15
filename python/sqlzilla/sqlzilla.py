@@ -13,10 +13,10 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_iris import IRISVector
 
 class SQLZilla:
-    def __init__(self, connection_string, openai_api_key, schema_name="SQLUser"):
+    def __init__(self, connection_string, openai_api_key):
         self.log('criou')
         self.openai_api_key = openai_api_key
-        self.schema_name = schema_name
+        self.schema_name = None
         self.engine = create_engine(connection_string)
         self.conn_wrapper = self.engine.connect()
         self.connection = self.conn_wrapper.connection
@@ -42,6 +42,8 @@ class SQLZilla:
     
     def get_examples(self):
         sql = "SELECT prompt, query FROM sqlzilla.examples WHERE schema_name = %s"
+        self.log('sql: ' + sql)
+        self.log('params: ' + str([self.schema_name]))
         rows = self.execute_query(sql, [self.schema_name])
         examples = [{
                 "input": row[0], 
@@ -50,7 +52,7 @@ class SQLZilla:
         return examples
     
     def add_example(self, prompt, query):
-        sql = "INSERT INTO sqlzilla.examples (prompt, query, schema) VALUES (%s, %s, %s)"
+        sql = "INSERT INTO sqlzilla.examples (prompt, query, schema_name) VALUES (%s, %s, %s)"
         self.execute_query(sql, [prompt, query, self.schema_name])
 
     def __del__(self):
@@ -176,8 +178,10 @@ class SQLZilla:
             documents = loader.load()
             text_splitter = CharacterTextSplitter(chunk_size=400, chunk_overlap=20, separator="\n")
             self.tables_docs = text_splitter.split_documents(documents)
+            self.log('schema_name: ' + str(self.schema_name))
+            collection_name_tables = "sql_tables_"+self.schema_name
             new_tables_docs, tables_docs_ids = self.filter_not_in_collection(
-                "sql_tables", 
+                collection_name_tables, 
                 self.tables_docs, 
                 self.get_ids_from_string_array([x.page_content for x in self.tables_docs])
             )
@@ -186,14 +190,15 @@ class SQLZilla:
                 embedding = OpenAIEmbeddings(openai_api_key=self.openai_api_key), 
                 documents = self.tables_docs,
                 connection=self.conn_wrapper,
-                collection_name="sql_tables",
+                collection_name=collection_name_tables,
                 ids=self.tables_docs_ids
             )
         
         if self.example_selector is None:
             examples = self.get_examples()
+            collection_name_examples = "sql_samples_"+self.schema_name
             new_sql_samples, sql_samples_ids = self.filter_not_in_collection(
-                "sql_samples", 
+                collection_name_examples, 
                 examples, 
                 self.get_ids_from_string_array([x['input'] for x in examples])
             )
@@ -204,7 +209,7 @@ class SQLZilla:
                 k=5,
                 input_keys=["input"],
                 connection=self.conn_wrapper,
-                collection_name="sql_samples",
+                collection_name=collection_name_examples,
                 ids=sql_samples_ids
             )
 
