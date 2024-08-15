@@ -123,11 +123,14 @@ if (st.session_state.namespace and database_schema and st.session_state.openai_a
 
         if editor_dict['type'] == "submit":
             st.session_state.code_text = editor_dict['text']
-            data = sqlzilla.execute_query(st.session_state.code_text)
-            # Display query result as dataframe
-            if (data is not None):
-                st.session_state.query_result = pd.DataFrame(data)
-                st.dataframe(st.session_state.query_result)
+            try:
+                data = sqlzilla.execute_query(st.session_state.code_text)
+                # Display query result as dataframe
+                if (data is not None):
+                    st.session_state.query_result = pd.DataFrame(data)
+                    st.dataframe(st.session_state.query_result)
+            except Exception as e:
+                st.error(e)
 
         if st.button("Save on library"):
             sqlzilla.add_example(st.session_state.prompt, st.session_state.code_text)
@@ -153,8 +156,6 @@ if (st.session_state.namespace and database_schema and st.session_state.openai_a
                 st.session_state.query = response
                 st.session_state.code_text = response
                 editor_dict['text'] = response
-                # data = sqlzilla.execute_query(st.session_state.code_text)
-                # st.session_state.query_result = pd.DataFrame(data)
                 st.rerun()
             # Display assistant response in chat message container
             with st.chat_message("assistant"):
