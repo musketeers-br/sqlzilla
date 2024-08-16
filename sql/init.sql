@@ -54,5 +54,5 @@ GO
 INSERT INTO sqlzilla.examples (prompt, query, schema_name) VALUES ('List all crew members involved in incidents with serious injuries, along with the incident date and location.', 'SELECT c.CrewNumber, c.Age, c.Sex, e.EventDate, e.LocationCity, e.LocationState FROM Aviation.Crew c JOIN Aviation.Event e ON c.EventId = e.EventId WHERE c.Injury = ''Serious''', 'Aviation')
 GO
 
-INSERT INTO sqlzilla.examples (prompt, query, schema_name) VALUES ('sales by category', 'SELECT TOP 3 p."Category", SUM(t."AmountOfSale") AS total_sales FROM HoleFoods.SalesTransaction t JOIN HoleFoods.Product p ON t."Product" = p."ID" GROUP BY p."Category" ORDER BY total_sales DESC;', 'Aviation')
+INSERT INTO sqlzilla.examples (prompt, query, schema_name) VALUES ('sales by category', 'SELECT TOP 3 p."Category", SUM(t."AmountOfSale") AS total_sales FROM HoleFoods.SalesTransaction t JOIN HoleFoods.Product p ON t."Product" = p."ID" GROUP BY p."Category" ORDER BY total_sales DESC;', 'HoleFoods')
 GO
