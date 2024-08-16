@@ -14,7 +14,7 @@ from langchain_iris import IRISVector
 
 class SQLZilla:
     def __init__(self, connection_string, openai_api_key):
-        self.log('criou')
+        self.log('SQLZilla created')
         self.openai_api_key = openai_api_key
         self.schema_name = None
         self.engine = create_engine(connection_string)
@@ -56,7 +56,7 @@ class SQLZilla:
         self.execute_query(sql, [prompt, query, self.schema_name])
 
     def __del__(self):
-        self.log('deletou')
+        self.log('SQLZilla deleted')
         if not self.connection is None:
             self.log('connection closed')
             self.connection.close()
