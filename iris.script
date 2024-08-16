@@ -15,11 +15,17 @@
     do $SYSTEM.OBJ.Load("/home/irisowner/dev/App.Installer.cls", "ck")
     set sc = ##class(App.Installer).setup()
 
+    // Change to working namespace
     zn "IRISAPP"
+
+    // Creates and populates the examples table
+    Do ##class(%SYSTEM.SQL.Schema).ImportDDL("/home/irisowner/dev/sql/init.sql", "/tmp/log-sql.txt")
 
     // Create /_vscode web app to support intersystems-community.testingmanager VS Code extension
     zpm "install vscode-per-namespace-settings"
+    // Sample databases
     zpm "install samples-aviation"
+    zpm "install samples-bi"
 
     // Configure %UnitTest in IRISAPP to suit the VS Code extension
     set ^UnitTestRoot="/usr/irissys/.vscode/IRISAPP/UnitTestRoot"

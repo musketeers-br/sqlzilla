@@ -1,3 +1,4 @@
+from typing import Dict, List
 from sqlalchemy import create_engine
 import hashlib
 import pandas as pd;
@@ -14,7 +15,7 @@ from langchain_iris import IRISVector
 
 class SQLZilla:
     def __init__(self, connection_string, openai_api_key):
-        self.log('SQLZilla created')
+        self.log('criou')
         self.openai_api_key = openai_api_key
         self.schema_name = None
         self.engine = create_engine(connection_string)
@@ -56,7 +57,7 @@ class SQLZilla:
         self.execute_query(sql, [prompt, query, self.schema_name])
 
     def __del__(self):
-        self.log('SQLZilla deleted')
+        self.log('deletou')
         if not self.connection is None:
             self.log('connection closed')
             self.connection.close()
@@ -202,7 +203,7 @@ class SQLZilla:
                 examples, 
                 self.get_ids_from_string_array([x['input'] for x in examples])
             )
-            self.example_selector = SemanticSimilarityExampleSelector.from_examples(
+            self.example_selector = MySemanticSimilarityExampleSelector.from_examples(
                 new_sql_samples,
                 OpenAIEmbeddings(openai_api_key=self.openai_api_key),
                 IRISVector,
@@ -255,16 +256,23 @@ Return just plain SQL; don't apply any kind of formatting.
         self.context["input"] = input
 
         relevant_tables_docs = self.tables_vector_store.similarity_search(input)
+        self.log('relevant_tables_docs: ' + str(relevant_tables_docs))
+        relevant_tables_docs_with_score = self.tables_vector_store.similarity_search_with_score(input)
+        self.log('relevant_tables_docs_with_score: ' + str(relevant_tables_docs_with_score))
         relevant_tables_docs_indices = [x.metadata["id"] for x in relevant_tables_docs]
         indices = self.table_df["id"].isin(relevant_tables_docs_indices)
         relevant_tables_array = [x for x in self.table_df[indices]["col_def"]]
         self.context["table_info"] = "\n\n".join(relevant_tables_array)
 
+        examples_value = self.example_selector.select_examples({"input": self.context["input"]})
+        self.log('examples_value: ' + str(examples_value))
+        examples_value_with_score = self.example_selector.select_examples_with_score({"input": self.context["input"]})
+        self.log('examples_value_with_score: ' + str(examples_value_with_score))
         self.context["examples_value"] = "\n\n".join([
-            self.example_prompt.invoke(x).to_string() for x in self.example_selector.select_examples({"input": self.context["input"]})
+            self.example_prompt.invoke(x).to_string() for x in examples_value
         ])
 
-        self.log(self.context)
+        self.log('context: ' + str(self.context))
 
         response = self.create_chain_model().invoke({
             "top_k": self.context["top_k"],
@@ -289,3 +297,26 @@ Return just plain SQL; don't apply any kind of formatting.
         elif re.search(r"\s*DELETE\s+", query, re.IGNORECASE):
             self.connection.commit()
         return None
+
+class MySemanticSimilarityExampleSelector(SemanticSimilarityExampleSelector):
+    
+    def select_examples_with_score(self, input_variables: Dict[str, str]) -> List[dict]:
+        """Select examples based on semantic similarity.
+
+        Args:
+            input_variables: The input variables to use for search.
+
+        Returns:
+            The selected examples.
+        """
+        # Get the docs with the highest similarity.
+        vectorstore_kwargs = self.vectorstore_kwargs or {}
+        example_docs_with_score = self.vectorstore.similarity_search_with_score(
+            self._example_to_text(input_variables, self.input_keys),
+            k=self.k,
+            **vectorstore_kwargs,
+        )
+        example_docs = [x[0] for x in example_docs_with_score]
+        scores = [x[1] for x in example_docs_with_score]
+        examples = self._documents_to_examples(example_docs)
+        return list(zip(examples, scores))

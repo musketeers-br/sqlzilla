@@ -78,6 +78,17 @@ $ docker-compose up -d
 4. Write SQL queries in the editor or chat window.
 5. Click "Execute" to run queries and see results.
 
+Some prompts you can try:
+
+- For 'Aviation' schema:
+  - what was the most deadly year?
+  - incident histogram by month/year
+- For 'HoleFoods' schema:
+  - income by group
+  - most sold foods
+  - sales by product
+  - sales by product and category
+
  
 ## See in action
 
